@@ -34,7 +34,9 @@ Use `getValid` to get a tuple which contains a validation object, or detailed fa
       // Use answer
     }
 
-The `validation` object will mirror the object shape, but for each of the property values, a `string` will be present if there is an error, or `null` is there is no error. 
+The `validation` object will mirror the object shape, but for each of the property values, a `string` will be present if there is an error, or `null` is there is no error.
+
+The `messages` array will contain a flattened list of all error messages, each with a `path` property (i.e. 'a.b.c'), and a human readable `err` string.
 
 ## Example
 
