@@ -109,6 +109,12 @@ function walkValue<TValueSchema extends ValueSchema>(
     } else {
       err = `"${input}" is not a value (unknown).`;
     }
+  } else if (type === 'any') {
+    if (input !== null && input !== undefined) {
+      ret = input;
+    } else {
+      err = `"${input}" is not a value (any).`;
+    }
   } else if (isOptions(type)) {
     const options = type[1];
 
@@ -229,7 +235,7 @@ function walkValue<TValueSchema extends ValueSchema>(
   return [ret, err];
 }
 
-type BasicSchema = 'string' | 'number' | 'boolean' | 'unknown' | Options;
+type BasicSchema = 'string' | 'number' | 'boolean' | 'unknown' | 'any' | Options;
 type Args = 'Null' | 'Opt';
 type Options<T extends string | number = string | number> = readonly [
   'Options',
@@ -283,7 +289,7 @@ type TupleSchema<
   TTupleType extends { readonly [key: number]: ValueSchema } = {
     readonly [key: number]: ValueSchema;
   }
-> = readonly ['Tuple', TTupleType];
+  > = readonly ['Tuple', TTupleType];
 
 function isTupleSchema<T extends TypeSchema>(
   type: T
@@ -293,12 +299,12 @@ function isTupleSchema<T extends TypeSchema>(
 
 type ArraySchema<
   TElementType extends
-    | BasicSchema
-    | ParserSchema
-    | ObjectSchema
-    | TupleSchema = BasicSchema | ParserSchema | ObjectSchema | TupleSchema,
+  | BasicSchema
+  | ParserSchema
+  | ObjectSchema
+  | TupleSchema = BasicSchema | ParserSchema | ObjectSchema | TupleSchema,
   TElementArgs extends Args = Args
-> = readonly [TElementType, readonly TElementArgs[]];
+  > = readonly [TElementType, readonly TElementArgs[]];
 
 function isArraySchema<T extends TypeSchema>(
   type: T
@@ -309,7 +315,7 @@ function isArraySchema<T extends TypeSchema>(
 type UnionSchema<
   TValue1 extends ValueSchema = any,
   TValue2 extends ValueSchema = any
-> = readonly ['Union', TValue1, TValue2];
+  > = readonly ['Union', TValue1, TValue2];
 
 type TypeSchema =
   | BasicSchema
@@ -322,34 +328,34 @@ type TypeSchema =
 type ValueSchema<
   TType extends TypeSchema = TypeSchema,
   TArgs extends Args = Args
-> = readonly [TType, readonly TArgs[]];
+  > = readonly [TType, readonly TArgs[]];
 
 // ================ RESULT TRANSFORMATION ================
 
 type ValueResult<TValue> = TValue extends ValueSchema<infer TType, infer TArgs>
   ? TType extends UnionSchema<infer TValue1, infer TValue2>
-    ? (
-        | (TValue1 extends ValueSchema<infer TType1, infer TArgs1>
-            ? _ValueResult<TType1, TArgs1>
-            : never)
-        | (TValue2 extends ValueSchema<infer TType2, infer TArgs2>
-            ? _ValueResult<TType2, TArgs2>
-            : never))
-    : _ValueResult<TType, TArgs>
+  ? (
+    | (TValue1 extends ValueSchema<infer TType1, infer TArgs1>
+      ? _ValueResult<TType1, TArgs1>
+      : never)
+    | (TValue2 extends ValueSchema<infer TType2, infer TArgs2>
+      ? _ValueResult<TType2, TArgs2>
+      : never))
+  : _ValueResult<TType, TArgs>
   : never;
 
 type _ValueResult<TType extends TypeSchema, TArgs extends Args> =
   | (TType extends BasicSchema
-      ? BasicResult<TType>
-      : TType extends ParserSchema<infer TRetType>
-      ? TRetType
-      : TType extends ObjectSchema
-      ? ObjectOrTupleResult<TType>
-      : TType extends TupleSchema<infer TTupleType>
-      ? ObjectOrTupleResult<TTupleType>
-      : TType extends ArraySchema<infer TElementType, infer TElementArgs>
-      ? ArrayResult<TElementType, TElementArgs>
-      : never)
+    ? BasicResult<TType>
+    : TType extends ParserSchema<infer TRetType>
+    ? TRetType
+    : TType extends ObjectSchema
+    ? ObjectOrTupleResult<TType>
+    : TType extends TupleSchema<infer TTupleType>
+    ? ObjectOrTupleResult<TTupleType>
+    : TType extends ArraySchema<infer TElementType, infer TElementArgs>
+    ? ArrayResult<TElementType, TElementArgs>
+    : never)
   | ArgsResultExtra<TArgs>;
 
 type ObjectOrTupleResult<T extends ObjectSchema | TupleSchema> = {
@@ -357,7 +363,7 @@ type ObjectOrTupleResult<T extends ObjectSchema | TupleSchema> = {
 };
 
 interface ArrayResult<TType extends TypeSchema, TArgs extends Args>
-  extends ReadonlyArray<_ValueResult<TType, TArgs>> {}
+  extends ReadonlyArray<_ValueResult<TType, TArgs>> { }
 
 type BasicResult<T extends BasicSchema> = T extends 'string'
   ? string
@@ -367,6 +373,8 @@ type BasicResult<T extends BasicSchema> = T extends 'string'
   ? boolean
   : T extends 'unknown'
   ? unknown
+  : T extends 'any'
+  ? any
   : T extends Options<infer TOptionType>
   ? TOptionType
   : never;
@@ -383,16 +391,16 @@ export type BasicValidation = Validation | null;
 
 type ValueValidation<TValue> = TValue extends ValueSchema<infer TType>
   ? (TType extends UnionSchema<infer TValue1, infer TValue2>
-      ? (
-          | (
-              | (TValue1 extends ValueSchema<infer TType1>
-                  ? _ValueValidation<TType1>
-                  : never)
-              | (TValue2 extends ValueSchema<infer TType2>
-                  ? _ValueValidation<TType2>
-                  : never))
-          | Validation)
-      : _ValueValidation<TType>)
+    ? (
+      | (
+        | (TValue1 extends ValueSchema<infer TType1>
+          ? _ValueValidation<TType1>
+          : never)
+        | (TValue2 extends ValueSchema<infer TType2>
+          ? _ValueValidation<TType2>
+          : never))
+      | Validation)
+    : _ValueValidation<TType>)
   : never;
 
 type _ValueValidation<TType extends TypeSchema> = TType extends BasicSchema
@@ -412,4 +420,4 @@ type ObjectOrTupleValidation<T extends ObjectSchema | TupleSchema> = {
 };
 
 interface ArrayValidation<TType extends TypeSchema>
-  extends ReadonlyArray<_ValueValidation<TType>> {}
+  extends ReadonlyArray<_ValueValidation<TType>> { }
