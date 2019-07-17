@@ -13,7 +13,7 @@ This library aims to completely stop runtime errors by ensuring that a compiled 
 - Less bugs. No disparity between the schema and the interface your code compiles.
 - If an object successfully makes its way into your domain, it is guaranteed to be in the correct shape.
 - Explicit checks for `null` and `undefined`.
-- Infinitely nestable schemas for Objects, Tuples, Arrays and Union types.
+- Infinitely nestable schemas for Objects, Tuples, Arrays, Records and Union types.
 - Supports literal types.
 - Direct support custom parsers and "Opaque" types (see `ts-essentials` module).
 - All excess properties are trimmed and a deep copy is returned. The original object is untouched.

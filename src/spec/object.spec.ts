@@ -38,7 +38,7 @@ describe('object', () => {
       deepEqual(answer, { one: 1, two: null });
     });
 
-    it('should NOT allow a valid object with disallowed missing properties', () => {
+    it('should NOT allow a valid object with disallowed missing properties (1)', () => {
       const [answer, validation, messages] = getValid({ one: 1 }, schema);
 
       deepEqual(answer, ValidationFail);
@@ -52,6 +52,20 @@ describe('object', () => {
       ]);
     });
 
+    it('should NOT allow a valid object with disallowed missing properties (2)', () => {
+      const [answer, validation, messages] = getValid({ two: null }, schema);
+
+      deepEqual(answer, ValidationFail);
+      deepEqual(validation, {
+        one: 'undefined is not allowed.',
+        two: null,
+        three: null
+      });
+      deepEqual(messages, [
+        { path: 'root.one', err: 'undefined is not allowed.' }
+      ]);
+    });
+
     it('should NOT allow a primitive', () => {
       const [answer, validation, messages] = getValid(123, schema);
 
@@ -59,6 +73,61 @@ describe('object', () => {
       deepEqual(validation, 'Value of type "number" is not an object.');
       deepEqual(messages, [
         { path: 'root', err: 'Value of type "number" is not an object.' }
+      ]);
+    });
+  });
+
+  describe('nested object schema', () => {
+    interface Schema {
+      readonly one: number;
+      readonly two?: {
+        readonly a: number;
+        readonly b: string;
+      };
+    }
+
+    const schema = [
+      {
+        one: ['number', []],
+        two: [
+          {
+            a: ['number', []],
+            b: ['string', []]
+          },
+          ['Opt']
+        ]
+      },
+      []
+    ] as const;
+
+    it('should allow a valid object', () => {
+      const answer: Schema = assertValid(
+        {
+          one: 1,
+          two: {
+            a: 1,
+            b: 'b'
+          }
+        },
+        schema
+      );
+
+      deepEqual(answer, { one: 1, two: { a: 1, b: 'b' } });
+    });
+
+    it('should NOT allow a missing property on 1st level', () => {
+      const [, validation, messages] = getValid({}, schema);
+
+      deepEqual(validation, {
+        one: 'undefined is not allowed.',
+        two: null
+      });
+
+      deepEqual(messages, [
+        {
+          path: 'root.one',
+          err: 'undefined is not allowed.'
+        }
       ]);
     });
   });
