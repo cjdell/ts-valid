@@ -139,6 +139,9 @@ describe('object', () => {
         }
       | {
           readonly two: string;
+        }
+      | {
+          readonly three: 'A' | 'B' | 'C';
         };
 
     const schema = [
@@ -153,6 +156,12 @@ describe('object', () => {
         [
           {
             two: ['string', []]
+          },
+          []
+        ],
+        [
+          {
+            three: [['Options', ['A', 'B', 'C']], []]
           },
           []
         ]
@@ -172,6 +181,12 @@ describe('object', () => {
       deepEqual(answer, { two: 'two' });
     });
 
+    it('should allow a valid object (3)', () => {
+      const answer: Schema = assertValid({ three: 'C' }, schema);
+
+      deepEqual(answer, { three: 'C' });
+    });
+
     it('should NOT allow an invalid object', () => {
       const [answer, validation, messages] = getValid({ one: 'one' }, schema);
 
@@ -179,11 +194,15 @@ describe('object', () => {
       deepEqual(validation, 'No valid union schemas');
       deepEqual(messages, [
         {
-          path: 'root (Union).one',
+          path: 'root{union(0)}.one',
           err: '"one" is not a number.'
         },
         {
-          path: 'root (Union).two',
+          path: 'root{union(1)}.two',
+          err: 'undefined is not allowed.'
+        },
+        {
+          path: 'root{union(2)}.three',
           err: 'undefined is not allowed.'
         },
         {

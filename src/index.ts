@@ -128,17 +128,21 @@ function walkValue<TValueSchema extends ValueSchema>(
 
     ret = result[0];
     err = result[1];
-  } else if (type[0] === 'Union') {
-    const [, s1, s2] = type;
+  } else if (isUnionSchema(type)) {
+    const [, ...unionValueSchemas] = type;
 
-    const result1 = walkValue(input, s1, `${path} (Union)`, messages);
-    const result2 = walkValue(input, s2, `${path} (Union)`, messages);
+    const results = unionValueSchemas.map((s, i) =>
+      walkValue(input, s, `${path}{union(${i})}`, messages)
+    );
 
-    if (result1[0] !== ValidationFail) {
-      ret = result1[0];
-    } else if (result2[0] !== ValidationFail) {
-      ret = result2[0];
-    } else {
+    for (const result of results) {
+      if (result[0] !== ValidationFail) {
+        ret = result[0];
+        break;
+      }
+    }
+
+    if (ret === ValidationFail) {
       // TODO: Merge errors somehow
       err = 'No valid union schemas';
     }
@@ -231,7 +235,7 @@ function walkValue<TValueSchema extends ValueSchema>(
         const keyResult = walkValue(
           key,
           [recordKeyType, []] as const,
-          `${path}.${key} {key}`,
+          `${path}.${key}{key}`,
           messages
         );
 
@@ -391,14 +395,22 @@ function isArraySchema<T extends TypeSchema>(
     Array.isArray(type) &&
     !isOptions(type) &&
     !isTupleSchema(type) &&
+    !isUnionSchema(type) &&
     !isRecordSchema(type)
   );
 }
 
 type UnionSchema<
   TValue1 extends ValueSchema = any,
-  TValue2 extends ValueSchema = any
-> = readonly ['Union', TValue1, TValue2];
+  TValue2 extends ValueSchema = any,
+  TValue3 extends ValueSchema = any
+> = readonly ['Union', TValue1, TValue2, TValue3?];
+
+function isUnionSchema<T extends TypeSchema>(
+  type: T
+): type is Extract<T, UnionSchema> {
+  return Array.isArray(type) && type[0] === 'Union';
+}
 
 type RecordSchema<
   TKey extends BasicSchema = BasicSchema,
@@ -407,7 +419,7 @@ type RecordSchema<
 
 function isRecordSchema<T extends TypeSchema>(
   type: T
-): type is Extract<T, TypeSchema> {
+): type is Extract<T, RecordSchema> {
   return Array.isArray(type) && type[0] === 'Record';
 }
 
@@ -428,13 +440,16 @@ type ValueSchema<
 // ================ RESULT TRANSFORMATION ================
 
 type ValueResult<TValue> = TValue extends ValueSchema<infer TType, infer TArgs>
-  ? TType extends UnionSchema<infer TValue1, infer TValue2>
+  ? TType extends UnionSchema<infer TValue1, infer TValue2, infer TValue3>
     ? (
         | (TValue1 extends ValueSchema<infer TType1, infer TArgs1>
             ? _ValueResult<TType1, TArgs1>
             : never)
         | (TValue2 extends ValueSchema<infer TType2, infer TArgs2>
             ? _ValueResult<TType2, TArgs2>
+            : never)
+        | (TValue3 extends ValueSchema<infer TType3, infer TArgs3>
+            ? _ValueResult<TType3, TArgs3>
             : never))
     : _ValueResult<TType, TArgs>
   : never;
