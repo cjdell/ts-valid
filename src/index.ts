@@ -129,11 +129,13 @@ function walkValue<TValueSchema extends ValueSchema>(
     ret = result[0];
     err = result[1];
   } else if (isUnionSchema(type)) {
-    const [, ...unionTypes] = type;
+    const { 1: u1, 2: u2, 3: u3 } = type;
 
-    const results = unionTypes.map((t, i) =>
-      walkValue(input, [t, args] as const, `${path}{union(${i})}`, messages)
-    );
+    const results = [u1, u2, u3]
+      .filter(truthFilter)
+      .map((t, i) =>
+        walkValue(input, [t, args] as const, `${path}{union(${i})}`, messages)
+      );
 
     for (const result of results) {
       if (result[0] !== ValidationFail) {
@@ -228,7 +230,7 @@ function walkValue<TValueSchema extends ValueSchema>(
       err = `Value of type "${typeof input}" is not an object.`;
     }
   } else if (isRecordSchema(type)) {
-    const [, recordKeyType, recordValueSchema] = type;
+    const { 1: recordKeyType, 2: recordValueSchema } = type;
 
     if (input && typeof input === 'object') {
       const propResults = Object.keys(input).map(key => {
@@ -308,6 +310,8 @@ function walkValue<TValueSchema extends ValueSchema>(
 
   return [ret, err];
 }
+
+const truthFilter = <T>(t: T): t is Exclude<T, undefined> => !!t;
 
 type BasicSchema =
   | 'string'
@@ -400,11 +404,13 @@ function isArraySchema<T extends TypeSchema>(
   );
 }
 
-type UnionSchema<
-  TValue1 extends TypeSchema = any,
-  TValue2 extends TypeSchema = any,
-  TValue3 extends TypeSchema = any
-> = readonly ['Union', TValue1, TValue2, TValue3?];
+// This is actually a tuple, however, TypeScript does not allow circular references in `type` constructs.
+interface UnionSchema {
+  readonly 0: 'Union';
+  readonly 1: TypeSchema;
+  readonly 2: TypeSchema;
+  readonly 3?: TypeSchema;
+}
 
 function isUnionSchema<T extends TypeSchema>(
   type: T
@@ -412,10 +418,12 @@ function isUnionSchema<T extends TypeSchema>(
   return Array.isArray(type) && type[0] === 'Union';
 }
 
-type RecordSchema<
-  TKey extends BasicSchema = BasicSchema,
-  TValue extends ValueSchema = any
-> = readonly ['Record', TKey, TValue];
+// This is actually a tuple, however, TypeScript does not allow circular references in `type` constructs.
+interface RecordSchema {
+  readonly 0: 'Record';
+  readonly 1: BasicSchema;
+  readonly 2: ValueSchema;
+}
 
 function isRecordSchema<T extends TypeSchema>(
   type: T
@@ -440,11 +448,16 @@ type ValueSchema<
 // ================ RESULT TRANSFORMATION ================
 
 type ValueResult<TValue> = TValue extends ValueSchema<infer TType, infer TArgs>
-  ? TType extends UnionSchema<infer TValue1, infer TValue2, infer TValue3>
+  ? TType extends {
+      readonly 0: 'Union';
+      readonly 1: infer TValue1;
+      readonly 2: infer TValue2;
+      readonly 3: infer TValue3;
+    }
     ? (
-        | _ValueResult<TValue1, TArgs>
-        | _ValueResult<TValue2, TArgs>
-        | _ValueResult<TValue3, TArgs>)
+        | _ValueResult<Extract<TValue1, TypeSchema>, TArgs>
+        | _ValueResult<Extract<TValue2, TypeSchema>, TArgs>
+        | _ValueResult<Extract<TValue3, TypeSchema>, TArgs>)
     : _ValueResult<TType, TArgs>
   : never;
 
@@ -459,8 +472,12 @@ type _ValueResult<TType extends TypeSchema, TArgs extends Args> =
       ? ObjectOrTupleResult<TTupleType>
       : TType extends ArraySchema<infer TElementType, infer TElementArgs>
       ? ArrayResult<TElementType, TElementArgs>
-      : TType extends RecordSchema<infer TKey, infer TValue>
-      ? _RecordResult<TKey, TValue>
+      : TType extends {
+          readonly 0: 'Record';
+          readonly 1: infer TKey;
+          readonly 2: infer TValue;
+        }
+      ? RecordResult<Extract<TKey, BasicSchema>, Extract<TValue, ValueSchema>>
       : never)
   | ArgsResultExtra<TArgs>;
 
@@ -468,7 +485,7 @@ type ObjectOrTupleResult<T extends ObjectSchema | TupleSchema> = {
   readonly [P in keyof T]: ValueResult<T[P]>;
 };
 
-type _RecordResult<TKey extends BasicSchema, TValue extends ValueSchema> = {
+type RecordResult<TKey extends BasicSchema, TValue extends ValueSchema> = {
   [P in BasicResult<TKey>]: ValueResult<TValue>;
 };
 
@@ -500,15 +517,16 @@ type Validation = string;
 export type BasicValidation = Validation | null;
 
 type ValueValidation<TValue> = TValue extends ValueSchema<infer TType>
-  ? (TType extends UnionSchema<infer TValue1, infer TValue2>
+  ? (TType extends {
+      readonly 0: 'Union';
+      readonly 1: infer TValue1;
+      readonly 2: infer TValue2;
+      readonly 3: infer TValue3;
+    }
       ? (
-          | (
-              | (TValue1 extends ValueSchema<infer TType1>
-                  ? _ValueValidation<TType1>
-                  : never)
-              | (TValue2 extends ValueSchema<infer TType2>
-                  ? _ValueValidation<TType2>
-                  : never))
+          | _ValueValidation<Extract<TValue1, TypeSchema>>
+          | _ValueValidation<Extract<TValue2, TypeSchema>>
+          | _ValueValidation<Extract<TValue3, TypeSchema>>
           | BasicValidation)
       : _ValueValidation<TType>)
   : never;
@@ -523,8 +541,17 @@ type _ValueValidation<TType extends TypeSchema> = TType extends BasicSchema
   ? ObjectOrTupleValidation<TTupleType> | BasicValidation
   : TType extends ArraySchema<infer TElementType>
   ? ArrayValidation<TElementType> | BasicValidation
-  : TType extends RecordSchema<infer TKey, infer TValue>
-  ? RecordValidation<TKey, TValue> | BasicValidation
+  : TType extends {
+      readonly 0: 'Record';
+      readonly 1: infer TKey;
+      readonly 2: infer TValue;
+    }
+  ?
+      | RecordValidation<
+          Extract<TKey, BasicSchema>,
+          Extract<TValue, ValueSchema>
+        >
+      | BasicValidation
   : never;
 
 type ObjectOrTupleValidation<T extends ObjectSchema | TupleSchema> = {

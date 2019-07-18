@@ -161,7 +161,7 @@ describe('object', () => {
     ] as const;
 
     it('should allow a valid object (1)', () => {
-      const answer = assertValid({ one: 1 }, schema);
+      const answer: Schema = assertValid({ one: 1 }, schema);
 
       deepEqual(answer, { one: 1 });
     });
