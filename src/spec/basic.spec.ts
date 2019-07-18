@@ -105,7 +105,7 @@ describe('basic', () => {
   });
 
   describe('union schema', () => {
-    const schema = [['Union', ['string', []], ['number', []]], []] as const;
+    const schema = [['Union', 'string', 'number'], []] as const;
 
     it('should allow a string', () => {
       const answer: string | number = assertValid('hello', schema);

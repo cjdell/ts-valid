@@ -129,10 +129,10 @@ function walkValue<TValueSchema extends ValueSchema>(
     ret = result[0];
     err = result[1];
   } else if (isUnionSchema(type)) {
-    const [, ...unionValueSchemas] = type;
+    const [, ...unionTypes] = type;
 
-    const results = unionValueSchemas.map((s, i) =>
-      walkValue(input, s, `${path}{union(${i})}`, messages)
+    const results = unionTypes.map((t, i) =>
+      walkValue(input, [t, args] as const, `${path}{union(${i})}`, messages)
     );
 
     for (const result of results) {
@@ -401,9 +401,9 @@ function isArraySchema<T extends TypeSchema>(
 }
 
 type UnionSchema<
-  TValue1 extends ValueSchema = any,
-  TValue2 extends ValueSchema = any,
-  TValue3 extends ValueSchema = any
+  TValue1 extends TypeSchema = any,
+  TValue2 extends TypeSchema = any,
+  TValue3 extends TypeSchema = any
 > = readonly ['Union', TValue1, TValue2, TValue3?];
 
 function isUnionSchema<T extends TypeSchema>(
@@ -442,15 +442,9 @@ type ValueSchema<
 type ValueResult<TValue> = TValue extends ValueSchema<infer TType, infer TArgs>
   ? TType extends UnionSchema<infer TValue1, infer TValue2, infer TValue3>
     ? (
-        | (TValue1 extends ValueSchema<infer TType1, infer TArgs1>
-            ? _ValueResult<TType1, TArgs1>
-            : never)
-        | (TValue2 extends ValueSchema<infer TType2, infer TArgs2>
-            ? _ValueResult<TType2, TArgs2>
-            : never)
-        | (TValue3 extends ValueSchema<infer TType3, infer TArgs3>
-            ? _ValueResult<TType3, TArgs3>
-            : never))
+        | _ValueResult<TValue1, TArgs>
+        | _ValueResult<TValue2, TArgs>
+        | _ValueResult<TValue3, TArgs>)
     : _ValueResult<TType, TArgs>
   : never;
 

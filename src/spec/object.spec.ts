@@ -147,24 +147,15 @@ describe('object', () => {
     const schema = [
       [
         'Union',
-        [
-          {
-            one: ['number', []]
-          },
-          []
-        ],
-        [
-          {
-            two: ['string', []]
-          },
-          []
-        ],
-        [
-          {
-            three: [['Options', ['A', 'B', 'C']], []]
-          },
-          []
-        ]
+        {
+          one: ['number', []]
+        },
+        {
+          two: ['string', []]
+        },
+        {
+          three: [['Options', ['A', 'B', 'C']], []]
+        }
       ],
       []
     ] as const;
