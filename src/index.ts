@@ -447,7 +447,10 @@ type ValueSchema<
 
 // ================ RESULT TRANSFORMATION ================
 
-type ValueResult<TValue> = TValue extends ValueSchema<infer TType, infer TArgs>
+export type ValueResult<TValue> = TValue extends ValueSchema<
+  infer TType,
+  infer TArgs
+>
   ? TType extends {
       readonly 0: 'Union';
       readonly 1: infer TValue1;
@@ -516,7 +519,7 @@ type Validation = string;
 
 export type BasicValidation = Validation | null;
 
-type ValueValidation<TValue> = TValue extends ValueSchema<infer TType>
+export type ValueValidation<TValue> = TValue extends ValueSchema<infer TType>
   ? (TType extends {
       readonly 0: 'Union';
       readonly 1: infer TValue1;
