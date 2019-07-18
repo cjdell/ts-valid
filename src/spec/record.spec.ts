@@ -1,4 +1,4 @@
-import { assertValid, getValid, ValidationFail } from '..';
+import { assertValid, getValid, getValidProp, ValidationFail } from '..';
 import { deepEqual } from './common';
 
 describe('record', () => {
@@ -134,6 +134,18 @@ describe('record', () => {
           err: '"2" is not a string.'
         }
       ]);
+
+      deepEqual(getValidProp(validation, 'A'), {
+        one: null,
+        two: '"2" is not a string.'
+      });
+      deepEqual(
+        getValidProp(getValidProp(validation, 'A'), 'two'),
+        '"2" is not a string.'
+      );
+
+      deepEqual(getValidProp(validation, 'B'), null);
+      deepEqual(getValidProp(getValidProp(validation, 'B'), 'two'), null);
     });
   });
 });

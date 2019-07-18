@@ -568,24 +568,29 @@ type RecordValidation<TKey extends BasicSchema, TValue extends ValueSchema> = {
   [P in BasicResult<TKey>]?: ValueValidation<TValue>;
 };
 
-export function chopValidation<
-  TType extends TypeSchema,
-  TValidation extends ValueValidation<TType>,
+export function getValidProp<
+  TValidation extends
+    | ObjectOrTupleValidation<any>
+    | RecordValidation<any, any>
+    | BasicValidation,
   TObjectValidation extends Extract<
     TValidation,
-    ObjectOrTupleValidation<Extract<TType, ObjectSchema>>
+    ObjectOrTupleValidation<any> | RecordValidation<any, any>
   >,
   TProp extends keyof TObjectValidation
->(validation: TValidation, prop: TProp): TObjectValidation[TProp] | null {
-  if (!validation) {
+>(
+  validation: TValidation,
+  prop: TProp
+): Exclude<TObjectValidation[TProp], undefined> | BasicValidation {
+  if (validation === null) {
     return null;
   }
-  if (typeof validation !== 'object') {
-    return null;
+  if (typeof validation === 'string') {
+    return validation;
   }
   if (!(prop in validation)) {
     return null;
   }
 
-  return (validation as TObjectValidation)[prop];
+  return validation[prop] as Exclude<TObjectValidation[TProp], undefined>;
 }

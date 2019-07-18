@@ -1,4 +1,4 @@
-import { assertValid, getValid, ValidationFail } from '..';
+import { assertValid, getValid, getValidProp, ValidationFail } from '..';
 import { deepEqual } from './common';
 
 describe('object', () => {
@@ -129,6 +129,10 @@ describe('object', () => {
           err: 'undefined is not allowed.'
         }
       ]);
+
+      deepEqual(getValidProp(validation, 'one'), 'undefined is not allowed.');
+      deepEqual(getValidProp(validation, 'two'), null);
+      deepEqual(getValidProp(getValidProp(validation, 'two'), 'a'), null);
     });
   });
 
