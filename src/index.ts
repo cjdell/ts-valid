@@ -567,3 +567,25 @@ interface ArrayValidation<TType extends TypeSchema>
 type RecordValidation<TKey extends BasicSchema, TValue extends ValueSchema> = {
   [P in BasicResult<TKey>]?: ValueValidation<TValue>;
 };
+
+export function chopValidation<
+  TType extends TypeSchema,
+  TValidation extends ValueValidation<TType>,
+  TObjectValidation extends Extract<
+    TValidation,
+    ObjectOrTupleValidation<Extract<TType, ObjectSchema>>
+  >,
+  TProp extends keyof TObjectValidation
+>(validation: TValidation, prop: TProp): TObjectValidation[TProp] | null {
+  if (!validation) {
+    return null;
+  }
+  if (typeof validation !== 'object') {
+    return null;
+  }
+  if (!(prop in validation)) {
+    return null;
+  }
+
+  return (validation as TObjectValidation)[prop];
+}
